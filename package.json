@@ -1,0 +1,74 @@
+{
+  "name": "desktop-manager",
+  "version": "1.0.0",
+  "description": "桌面管家 - 桌面整理与桌面美化",
+  "main": "out/main/index.js",
+  "author": "WorkBuddy",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "node scripts/sync-notes.cjs && electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "dist": "node scripts/sync-notes.cjs && electron-vite build && electron-builder",
+    "sync:notes": "node scripts/sync-notes.cjs",
+    "test": "node --test tests/markdown.test.mjs tests/pathGuard.test.mjs tests/summary.test.mjs tests/targetDir.test.mjs tests/reminder.test.mjs"
+  },
+  "dependencies": {
+    "koffi": "^2.9.0",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.3.0",
+    "jimp": "^0.22.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.workbuddy.desktopmanager",
+    "productName": "桌面管家",
+    "files": [
+      "out/**/*",
+      "resources/**/*"
+    ],
+    "asarUnpack": [
+      "**/node_modules/koffi/**"
+    ],
+    "extraResources": [
+      {
+        "from": "docs",
+        "to": "docs"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "桌面管家",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "桌面管家-Setup-${version}.exe",
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico",
+      "uninstallDisplayName": "桌面管家"
+    }
+  }
+}

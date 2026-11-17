@@ -1,0 +1,2249 @@
+:root {
+  --accent: #5b9dff;
+  /* Fences-style frosted glass: colour + alpha in one value so text stays crisp
+     (element-level opacity would also fade text and shadows). */
+  --panel-bg: rgba(13, 15, 20, 0.58);
+  /* 面板不透明度只作用在背景色上（由 App.tsx 预算成 --panel-bg-a）。
+     不再用元素级的 opacity —— 那会把标题和正文一起做半透明，
+     浅色主题下就成了「灰底 + 发虚的黑字」，怎么看都不清楚。 */
+  --panel-bg-a: rgba(13, 15, 20, 0.58);
+  --panel-opacity: 1;
+  --blur: blur(28px) saturate(1.25);
+  --panel-border: var(--fill-soft);
+  --panel-highlight: inset 0 1px 0 var(--fill-soft);
+  --panel-shadow: 0 10px 36px rgba(0, 0, 0, 0.42);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  font-family: system-ui, 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  color: var(--fg);
+  overflow: hidden;
+  user-select: none;
+}
+
+#root {
+  height: 100%;
+}
+
+button {
+  background: var(--fill-soft);
+  color: var(--fg);
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+button:hover {
+  background: rgba(91, 157, 255, 0.22);
+  border-color: rgba(91, 157, 255, 0.6);
+}
+
+input,
+select,
+textarea {
+  background: var(--fill-weak);
+  color: var(--fg);
+  border: 1px solid var(--stroke);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+/* ---------- Desktop layer ---------- */
+.desktop-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.fence {
+  position: absolute;
+  pointer-events: auto;
+  background: var(--panel-bg-a, var(--panel-bg));
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--panel-highlight), var(--panel-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: move;
+  border-bottom: 1px solid var(--fill-soft);
+  background: var(--fill-weak);
+  min-height: 30px;
+}
+.fence-title {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--fg);
+  text-transform: uppercase;
+}
+.fence-actions {
+  display: flex;
+  gap: 2px;
+}
+/* Fences-style header buttons: invisible until the header is hovered,
+   circular hover halo, springy press feedback. */
+.fence-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--fg-dim);
+  opacity: 0;
+  transition: background 0.12s ease, color 0.12s ease, opacity 0.15s ease,
+    transform 0.08s ease;
+}
+.fence-header:hover .fence-btn,
+.fence-btn:focus-visible,
+.fence-btn.open {
+  opacity: 1;
+}
+.fence-btn:hover {
+  background: var(--stroke);
+  color: #fff;
+}
+.fence-btn:active {
+  transform: scale(0.88);
+  background: var(--stroke-strong);
+}
+.fence-body {
+  overflow: auto;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.fence-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  opacity: 0.5;
+  font-size: 12px;
+  padding: 12px;
+}
+/* Empty fence (desktop not organised yet): one clear call to action. */
+.fence-idle {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 10px;
+  text-align: center;
+}
+.fence-idle-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg);
+  opacity: 0.82;
+  line-height: 1.5;
+}
+.fence-idle-text span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--fg-dim);
+  opacity: 0.9;
+}
+.fence-idle-btn {
+  padding: 6px 16px;
+  font-size: 12.5px;
+  border-radius: 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.08s ease;
+}
+.fence-idle-btn:hover {
+  filter: brightness(1.08);
+}
+.fence-idle-btn:active {
+  transform: scale(0.97);
+}
+
+.file-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.file-item:hover {
+  background: var(--fill-soft);
+}
+.file-name {
+  font-size: 11px;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+.file-icon-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--stroke-strong);
+}
+
+.ctx-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--menu-bg);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 150px;
+  pointer-events: auto;
+  box-shadow: var(--panel-shadow);
+}
+.ctx-item {
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.ctx-item:hover {
+  background: rgba(91, 157, 255, 0.22);
+}
+
+/* ---------- Widgets ---------- */
+.widget {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg-a, var(--panel-bg));
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  min-width: 170px;
+  box-shadow: var(--panel-highlight), var(--panel-shadow);
+  color: var(--fg);
+  overflow: hidden;
+}
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  cursor: move;
+  border-bottom: 1px solid var(--fill-soft);
+  background: var(--fill-weak);
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  min-height: 34px;
+  flex: 0 0 auto;
+}
+.widget-body {
+  padding: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Resize grips ---------- */
+.widget-grip {
+  position: absolute;
+  z-index: 6;
+}
+.widget-grip.e {
+  top: 0;
+  right: 0;
+  bottom: 18px;
+  width: 8px;
+  cursor: ew-resize;
+}
+.widget-grip.s {
+  left: 0;
+  right: 18px;
+  bottom: 0;
+  height: 8px;
+  cursor: ns-resize;
+}
+.widget-grip.se {
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+.widget-grip.e:hover {
+  background: linear-gradient(90deg, transparent, var(--fill-soft));
+}
+.widget-grip.s:hover {
+  background: linear-gradient(180deg, transparent, var(--fill-soft));
+}
+/* 经典「双折角」把手：两层斜线，默认就看得见，hover 更亮 */
+.widget-grip.se::after,
+.widget-grip.se::before {
+  content: '';
+  position: absolute;
+  border-right: 2px solid var(--fg-dim);
+  border-bottom: 2px solid var(--fg-dim);
+  border-radius: 0 0 2px 0;
+  transition: opacity 0.14s ease, border-color 0.14s ease;
+}
+.widget-grip.se::after {
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  opacity: 0.62;
+}
+.widget-grip.se::before {
+  right: 8px;
+  bottom: 8px;
+  width: 7px;
+  height: 7px;
+  opacity: 0.3;
+}
+.widget:hover .widget-grip.se::after {
+  opacity: 0.9;
+}
+.widget:hover .widget-grip.se::before {
+  opacity: 0.5;
+}
+.widget-grip.se:hover::after {
+  opacity: 1;
+  border-color: var(--accent);
+}
+.widget-grip.se:hover::before {
+  opacity: 0.85;
+  border-color: var(--accent);
+}
+.widget-close {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.widget-close:hover {
+  background: var(--chip-hover-bg);
+  color: var(--chip-hover-fg);
+}
+.widget-close:active {
+  transform: scale(0.88);
+  background: var(--stroke-strong);
+}
+
+.clock-time {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.clock-date {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  font-size: 11px;
+  text-align: center;
+}
+.cal-h {
+  opacity: 0.5;
+  padding: 2px 0;
+}
+.cal-d {
+  padding: 3px 0;
+  border-radius: 4px;
+}
+.cal-today {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---------- Note widget (task list) ---------- */
+/* 状态配色全部走变量：深色主题用浅字 + 半透明底，
+   浅色主题换成深字 + 同色系实底，避免「黄底浅黄字」这种看不清的组合。 */
+:root {
+  --note-todo-bg: rgba(120, 140, 180, 0.16);
+  --note-todo-bd: #7f8db3;
+  --note-todo-fg: #cfd8ea;
+  --note-doing-bg: rgba(214, 158, 46, 0.18);
+  --note-doing-bd: #e0a52e;
+  --note-doing-fg: #f3d08a;
+  --note-done-bg: rgba(74, 190, 122, 0.16);
+  --note-done-bd: #46c07a;
+  --note-done-fg: #a8e7c3;
+  --note-hover-filter: brightness(1.18);
+  --note-meta-fg: var(--fg-dim);
+  --note-text-fg: var(--fg);
+}
+
+/* 自适应状态下的基准宽度；拖过把手后由内联 width 覆盖。 */
+.widget[data-wkey='note'] {
+  width: 238px;
+}
+.note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+/* 用户拖出高度后：列表撑满剩余空间，滚动条交给列表自己 */
+.widget[data-sized='1'] .note-list {
+  max-height: none;
+}
+
+/* One heading per creation day; same-day entries share the group below it. */
+.note-day {
+  display: flex;
+  flex-direction: column;
+}
+.note-day + .note-day {
+  margin-top: 8px;
+}
+.note-day-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 1px 5px;
+}
+.note-day-label {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--fg);
+}
+.note-day-sub {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--note-meta-fg);
+}
+.note-day-line {
+  flex: 1 1 auto;
+  min-width: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--stroke-strong), rgba(255, 255, 255, 0.02));
+}
+.note-day-count {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  line-height: 1.6;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--note-meta-fg);
+  background: var(--fill-soft);
+  font-variant-numeric: tabular-nums;
+}
+.note-day-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 3px;
+  padding-left: 7px;
+  border-left: 1px solid var(--fill-soft);
+}
+.note-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+/* Status colours: 未开始 = 中性蓝灰，进行中 = 琥珀，已完成 = 绿 */
+.note-item.st-todo {
+  background: var(--note-todo-bg);
+  border-left-color: var(--note-todo-bd);
+  color: var(--note-todo-fg);
+}
+.note-item.st-doing {
+  background: var(--note-doing-bg);
+  border-left-color: var(--note-doing-bd);
+  color: var(--note-doing-fg);
+}
+.note-item.st-done {
+  background: var(--note-done-bg);
+  border-left-color: var(--note-done-bd);
+  color: var(--note-done-fg);
+  opacity: 0.72;
+}
+.note-item:hover {
+  filter: var(--note-hover-filter);
+}
+.note-dot {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--note-todo-bd);
+  background: transparent;
+  cursor: pointer;
+}
+.st-todo .note-dot {
+  border-color: var(--note-todo-bd);
+}
+.st-doing .note-dot {
+  border-color: var(--note-doing-bd);
+  background: radial-gradient(circle, var(--note-doing-bd) 42%, transparent 46%);
+}
+.st-done .note-dot {
+  border-color: var(--note-done-bd);
+  background: var(--note-done-bd);
+}
+.note-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--note-text-fg);
+  caret-color: var(--accent);
+  font-size: 12.5px;
+  line-height: 1.35;
+  padding: 1px 0;
+}
+.st-done .note-text {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+.note-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: inherit;
+  font-size: 10px;
+  padding: 1px 5px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--fill-soft);
+  color: var(--fg);
+  opacity: 0.85;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease, color 0.12s ease;
+}
+.note-caret {
+  font-size: 8px;
+  line-height: 1;
+  opacity: 0.75;
+}
+/* 徽标文字跟状态色走：深色下浅字，浅色下深字，同色系底不会糊在一起 */
+.st-todo .note-badge {
+  background: var(--note-todo-bg);
+  color: var(--note-todo-fg);
+}
+.st-doing .note-badge {
+  background: var(--note-doing-bg);
+  color: var(--note-doing-fg);
+}
+.st-done .note-badge {
+  background: var(--note-done-bg);
+  color: var(--note-done-fg);
+}
+/* 用 .note-item 前缀压过上面的状态规则，hover / 展开时不丢可读性 */
+.note-item .note-badge:hover {
+  opacity: 1;
+  background: var(--chip-hover-bg);
+  color: var(--chip-hover-fg);
+}
+.note-item .note-badge.open {
+  opacity: 1;
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+  border-color: transparent;
+}
+.note-del {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.note-item:hover .note-del {
+  opacity: 1;
+}
+.note-del:hover {
+  color: #ff7d7d;
+}
+.note-empty {
+  margin: 0;
+  padding: 10px 2px;
+  font-size: 12px;
+  color: var(--note-meta-fg);
+  opacity: 0.9;
+}
+
+/* ---------- 待办提醒（便签 × 闹铃）---------- */
+/* 未设置时只在悬停时露出，避免每行都堆一个灰铃铛 */
+.note-bell {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  background: none;
+  border: none;
+  color: var(--fg-dim);
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+.note-bell-icon {
+  font-size: 10.5px;
+  filter: grayscale(1);
+  opacity: 0.85;
+}
+.note-item:hover .note-bell,
+.note-bell.on,
+.note-bell.open {
+  opacity: 1;
+}
+.note-bell.on {
+  color: var(--accent);
+}
+.note-bell.on .note-bell-icon {
+  filter: none;
+}
+.note-bell.stale {
+  color: #e5a24d;
+}
+.note-bell-text {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.note-bell:hover {
+  color: var(--fg);
+}
+
+.note-remind {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 6px 19px;
+  padding: 7px 8px;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: var(--fill-weak);
+  animation: nsp-in 0.12s ease;
+}
+.nr-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.nr-row input {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 5px;
+  min-width: 0;
+  border-radius: 5px;
+  border: 1px solid var(--stroke);
+  background: var(--fill-soft);
+  color: var(--fg);
+  color-scheme: dark;
+}
+html[data-theme='light'] .nr-row input {
+  color-scheme: light;
+}
+.nr-date {
+  flex: 1 1 auto;
+}
+.nr-time {
+  flex: 0 0 auto;
+  width: 78px;
+}
+.nr-row input:disabled {
+  opacity: 0.45;
+}
+.nr-save,
+.nr-clear {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.nr-save {
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+  font-weight: 600;
+}
+.nr-clear {
+  background: transparent;
+  border-color: var(--stroke);
+  color: var(--fg-dim);
+}
+.nr-clear:hover {
+  color: #ff7d7d;
+  border-color: #ff7d7d;
+}
+.nr-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.nr-quick button {
+  font-family: inherit;
+  font-size: 10.5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+.nr-quick button:hover {
+  background: var(--chip-hover-bg);
+  border-color: transparent;
+  color: var(--chip-hover-fg);
+}
+.nr-days {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.nr-day {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  padding: 0;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+  border-radius: 50%;
+  border: 1px solid var(--stroke);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+.nr-day.on {
+  background: var(--chip-on-bg);
+  color: var(--chip-on-fg);
+  border-color: transparent;
+}
+.nr-hint {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Note status picker ---------- */
+.note-status-picker {
+  display: flex;
+  gap: 4px;
+  padding: 1px 0 4px 19px;
+  animation: nsp-in 0.12s ease;
+}
+@keyframes nsp-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.nsp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--fill-weak);
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.nsp:hover {
+  background: var(--chip-hover-bg);
+  border-color: transparent;
+  color: var(--chip-hover-fg);
+}
+.nsp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--note-todo-bd);
+}
+.nsp.st-doing .nsp-dot {
+  background: var(--note-doing-bd);
+}
+.nsp.st-done .nsp-dot {
+  background: var(--note-done-bd);
+}
+/* 当前状态：反色胶囊。原来写死 #fff 字配半透明底，
+   浅色主题下就是白字压浅灰，几乎看不见。 */
+.nsp.on,
+.nsp.st-doing.on,
+.nsp.st-done.on {
+  color: var(--chip-on-fg);
+  border-color: transparent;
+  background: var(--chip-on-bg);
+}
+.note-add {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin-top: 8px;
+  width: 100%;
+}
+.note-add input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: var(--fill-weak);
+  color: var(--note-text-fg);
+  caret-color: var(--accent);
+  outline: none;
+}
+.note-add input::placeholder {
+  color: var(--note-meta-fg);
+  opacity: 0.9;
+}
+.note-add input:focus {
+  border-color: var(--accent);
+}
+.note-add button {
+  flex: 0 0 auto;
+  width: 30px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* ---------- Desktop control bar (collapsible) ---------- */
+.desktop-control {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.dc-actions {
+  /* Absolutely positioned below the pill: the container then shrinks to the
+     pill itself, so a collapsed toolbar no longer leaves a wide invisible
+     strip that swallows clicks on the desktop. The pill also stays put when
+     the row expands instead of jumping down. */
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--panel-bg);
+  opacity: var(--panel-opacity);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--panel-highlight), var(--panel-shadow);
+  overflow: hidden;
+  max-height: 60px;
+  transform-origin: top right;
+  transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.22s ease,
+    transform 0.22s ease;
+}
+/* Collapsed: the button row slides up out of the way, leaving a small pill. */
+.desktop-control.collapsed .dc-actions {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+  transform: translateY(-6px) scaleY(0.9);
+}
+.dc-toggle {
+  border: 1px solid var(--panel-border);
+  /* The pill doubles as the drag handle for the whole toolbar. */
+  cursor: grab;
+  font-size: 11px;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: var(--fg);
+  background: var(--panel-bg);
+  opacity: var(--panel-opacity);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--panel-highlight), 0 4px 14px rgba(0, 0, 0, 0.3);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.dc-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(91, 157, 255, 0.5);
+}
+.dc-toggle:active {
+  cursor: grabbing;
+}
+
+/* ---------- Settings ---------- */
+.settings-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: auto;
+  background: var(--page-bg);
+  color: var(--fg);
+  overflow: auto;
+}
+.settings-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--fill-soft);
+}
+.settings-top h1 {
+  font-size: 18px;
+  margin: 0;
+}
+.settings-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  padding: 20px 24px;
+}
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--fill-soft);
+  border-radius: 12px;
+  padding: 16px;
+}
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--accent);
+}
+.card h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+.hint {
+  font-size: 12px;
+  opacity: 0.7;
+  margin: 4px 0;
+}
+.hint.break {
+  word-break: break-all;
+}
+/* 便签尺寸快捷选择 */
+.note-size-row {
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--fill-soft);
+}
+.note-size-label {
+  font-size: 13px;
+  margin-right: 2px;
+  opacity: 0.85;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  margin: 10px 0;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.fence-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.fence-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--fill-weak);
+}
+
+/* ---------- Fence category tabs (one window, many categories) ---------- */
+.fence-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--fill-soft);
+  flex: 0 0 auto;
+  scrollbar-width: thin;
+}
+.fence-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+.fence-tabs::-webkit-scrollbar-thumb {
+  background: var(--stroke-strong);
+  border-radius: 2px;
+}
+.fence-tab {
+  flex: 0 0 100px;
+  width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--fill-weak);
+  border: 1px solid transparent;
+  color: var(--fg);
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
+    transform 0.08s ease;
+}
+.fence-tab:hover {
+  background: var(--stroke);
+  border-color: var(--stroke);
+  color: #fff;
+}
+.fence-tab:active {
+  transform: scale(0.94);
+  background: var(--stroke-strong);
+}
+.fence-tab.active {
+  background: rgba(91, 157, 255, 0.22);
+  border-color: rgba(91, 157, 255, 0.6);
+  color: var(--fg);
+  font-weight: 600;
+}
+.fence-tab.active:active {
+  background: rgba(91, 157, 255, 0.32);
+}
+.fence-tab.empty {
+  opacity: 0.45;
+}
+.fence-tab.empty.active {
+  opacity: 1;
+}
+.fence-tab-count {
+  font-size: 11px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Settings: fence category checkboxes ---------- */
+.cat-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px 10px;
+  margin-top: 6px;
+}
+.cat-checks .check {
+  margin: 2px 0;
+}
+
+/* ---------- Fence item count badge ---------- */
+.fence-count {
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--stroke);
+  color: var(--fg);
+  border-radius: 10px;
+  padding: 1px 8px;
+  margin-left: 8px;
+  letter-spacing: 0;
+}
+
+/* ---------- Settings: custom category editor ---------- */
+.card-wide {
+  grid-column: 1 / -1;
+}
+.rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0;
+}
+.rule {
+  background: var(--fill-weak);
+  border: 1px solid var(--fill-soft);
+  border-radius: 10px;
+  padding: 10px;
+}
+.rule-other {
+  opacity: 0.85;
+  border-style: dashed;
+}
+.rule-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rule-enable {
+  margin: 0;
+}
+.rule-label {
+  flex: 1 1 140px;
+  min-width: 120px;
+  font-weight: 600;
+}
+.rule-tag {
+  font-size: 11px;
+  opacity: 0.7;
+  border: 1px solid var(--stroke);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.rule-ops {
+  display: flex;
+  gap: 4px;
+}
+.rule-actions {
+  margin-top: 4px;
+}
+.mini {
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+/* 归属目录移动映射列表 */
+.map-list {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.map-title {
+  margin: 0;
+}
+.map-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.6fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+.map-add {
+  align-self: flex-start;
+}
+.danger:hover {
+  background: #e0556b;
+  border-color: #e0556b;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ---------- Toast feedback layer ---------- */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  z-index: 99999;
+  pointer-events: none;
+}
+.toast-host-settings {
+  bottom: auto;
+  top: 64px;
+}
+.toast {
+  background: var(--menu-bg);
+  backdrop-filter: var(--blur);
+  color: var(--fg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 13px;
+  box-shadow: var(--panel-shadow);
+  max-width: 80vw;
+}
+.toast-error {
+  background: rgba(64, 22, 32, 0.94);
+  border-color: #e0556b;
+}
+
+/* ---------- Fences-style press feedback for toolbar buttons ---------- */
+.dc-actions button {
+  width: 84px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
+    transform 0.08s ease;
+}
+.dc-actions button:active {
+  transform: scale(0.94);
+}
+
+/* ---------- Wallpaper picker ---------- */
+.wp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: auto;
+}
+.wp-card {
+  width: 700px;
+  max-width: 90vw;
+  max-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  opacity: var(--panel-opacity);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: var(--panel-highlight), var(--panel-shadow);
+  overflow: hidden;
+  animation: wp-in 0.16s ease;
+}
+@keyframes wp-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.wp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fill-soft);
+  background: var(--fill-weak);
+}
+.wp-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--fg);
+}
+.wp-head .fence-btn {
+  opacity: 1;
+}
+.wp-loading {
+  padding: 40px;
+  text-align: center;
+  opacity: 0.6;
+  font-size: 13px;
+}
+.wp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.wp-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  background: var(--fill-weak);
+  border: 1px solid var(--fill-soft);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.08s ease;
+}
+.wp-item:hover {
+  background: var(--fill-soft);
+  border-color: var(--stroke-strong);
+}
+.wp-item:active {
+  transform: scale(0.96);
+}
+.wp-item img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 7px;
+  display: block;
+  pointer-events: none;
+}
+.wp-item span {
+  font-size: 13px;
+  text-align: center;
+  color: var(--fg);
+}
+.wp-item.on {
+  border-color: rgba(91, 157, 255, 0.75);
+  background: rgba(91, 157, 255, 0.14);
+}
+.wp-item.on span {
+  color: #cfe2ff;
+}
+
+/* 便签每行的「详情」按钮：跳到归墨的事项跟踪 */
+.note-detail {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.5;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--stroke-strong);
+  background: var(--fill-weak);
+  color: var(--fg);
+  opacity: 0.72;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease, color 0.12s ease;
+}
+.note-item:hover .note-detail {
+  opacity: 1;
+}
+.note-detail:hover {
+  background: rgba(110, 190, 255, 0.22);
+  border-color: rgba(110, 190, 255, 0.5);
+  color: var(--fg);
+}
+
+/* ═══════════ Theme presets ═══════════
+   App.tsx sets <html data-theme="..."> from theme.preset.
+   "dark" is the default and equals :root values below, so it has no block. */
+:root {
+  --fg: #e6e8ee;
+  --fg-dim: #9aa4b8;
+  --fill-weak: rgba(255, 255, 255, 0.05);
+  --fill-soft: rgba(255, 255, 255, 0.08);
+  --stroke: rgba(255, 255, 255, 0.13);
+  --stroke-strong: rgba(255, 255, 255, 0.22);
+  --page-bg: #15172a;
+  --card-bg: #1d2036;
+  --menu-bg: rgba(17, 19, 27, 0.94);
+  /* 选中的胶囊：深色主题用浅底深字，和浅色主题的反色方案对称 */
+  --chip-on-bg: rgba(255, 255, 255, 0.9);
+  --chip-on-fg: #171a22;
+  --chip-hover-bg: rgba(255, 255, 255, 0.2);
+  --chip-hover-fg: var(--fg);
+}
+
+html[data-theme='light'] {
+  --fg: #2b3140;
+  --fg-dim: #6b7280;
+  --fill-weak: rgba(20, 30, 50, 0.05);
+  --fill-soft: rgba(20, 30, 50, 0.08);
+  --stroke: rgba(20, 30, 50, 0.14);
+  --stroke-strong: rgba(20, 30, 50, 0.24);
+  --page-bg: #eef1f6;
+  --card-bg: #ffffff;
+  --menu-bg: rgba(255, 255, 255, 0.96);
+  --panel-border: rgba(20, 30, 50, 0.12);
+  --panel-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --panel-shadow: 0 10px 36px rgba(30, 40, 60, 0.16);
+
+  /* 浅底上的状态色：底色更实、字色压深，保证小字号也读得清 */
+  --note-todo-bg: rgba(86, 108, 150, 0.13);
+  --note-todo-bd: #5c6f96;
+  --note-todo-fg: #33405a;
+  --note-doing-bg: rgba(206, 140, 20, 0.17);
+  --note-doing-bd: #b8791a;
+  --note-doing-fg: #7a4a00;
+  --note-done-bg: rgba(30, 150, 96, 0.14);
+  --note-done-bd: #22865a;
+  --note-done-fg: #14603c;
+  /* 浅底上 brightness(1.18) 会把整行连同文字一起提亮，越 hover 越发虚 */
+  --note-hover-filter: brightness(0.965) saturate(1.1);
+  --note-meta-fg: #5a6472;
+  --note-text-fg: #202634;
+
+  /* 选中/悬停胶囊：浅色下用反色（深底白字），深色下用浅底深字 */
+  --chip-on-bg: #2b3140;
+  --chip-on-fg: #ffffff;
+  --chip-hover-bg: rgba(20, 30, 50, 0.14);
+  --chip-hover-fg: #14181f;
+}
+
+html[data-theme='midnight'] {
+  --fg: #dfe7ff;
+  --fg-dim: #8b96b8;
+  --fill-weak: rgba(160, 180, 255, 0.06);
+  --fill-soft: rgba(160, 180, 255, 0.1);
+  --stroke: rgba(160, 180, 255, 0.16);
+  --stroke-strong: rgba(160, 180, 255, 0.26);
+  --page-bg: #10162b;
+  --card-bg: #161d38;
+  --menu-bg: rgba(18, 24, 44, 0.94);
+  --panel-border: rgba(160, 180, 255, 0.14);
+  --panel-highlight: inset 0 1px 0 rgba(200, 215, 255, 0.1);
+  --panel-shadow: 0 10px 36px rgba(0, 0, 0, 0.46);
+}
+
+html[data-theme='forest'] {
+  --fg: #dcefe4;
+  --fg-dim: #8fae9f;
+  --fill-weak: rgba(190, 240, 215, 0.06);
+  --fill-soft: rgba(190, 240, 215, 0.1);
+  --stroke: rgba(190, 240, 215, 0.16);
+  --stroke-strong: rgba(190, 240, 215, 0.26);
+  --page-bg: #12211c;
+  --card-bg: #172a24;
+  --menu-bg: rgba(18, 32, 27, 0.94);
+  --panel-border: rgba(190, 240, 215, 0.14);
+  --panel-highlight: inset 0 1px 0 rgba(220, 255, 235, 0.09);
+  --panel-shadow: 0 10px 36px rgba(0, 0, 0, 0.4);
+}
+
+/* 主题预设选择器（设置页） */
+.theme-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.theme-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 4px 7px;
+  border-radius: 10px;
+  border: 2px solid var(--stroke);
+  background: var(--fill-weak);
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg);
+  transition: border-color 0.12s ease, transform 0.08s ease;
+}
+.theme-preset:hover {
+  border-color: var(--accent);
+}
+.theme-preset:active {
+  transform: scale(0.95);
+}
+.theme-preset.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.theme-swatch {
+  width: 100%;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- 时钟闹铃 ---------- */
+.widget-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+/* 铃铛放在标题栏里：默认低调，有开启的闹铃才亮起来 */
+.widget-bell {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--fg-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.widget-bell:hover {
+  background: var(--fill-soft);
+  color: var(--fg);
+}
+.widget-bell:active {
+  transform: scale(0.9);
+}
+.widget-bell.on {
+  color: var(--fg);
+}
+.widget-bell-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  box-shadow: 0 0 6px rgba(255, 107, 107, 0.9);
+}
+
+/* 「下一个闹铃」一行，同时也是打开面板的入口 */
+.clock-alarm-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 7px;
+  width: 100%;
+  min-width: 0;
+  background: var(--fill-weak);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--fg-dim);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.clock-alarm-line:hover {
+  background: var(--fill-soft);
+  border-color: var(--stroke);
+  color: var(--fg);
+}
+.clock-alarm-line-bell {
+  font-size: 11px;
+  opacity: 0.9;
+}
+.clock-alarm-line-time {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.clock-alarm-line-label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clock-alarm-line-remain {
+  flex: 0 0 auto;
+  opacity: 0.72;
+  font-variant-numeric: tabular-nums;
+}
+.clock-alarm-line-idle {
+  opacity: 0.8;
+}
+
+/* ---------- 闹铃面板 ---------- */
+.alarm-panel {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--fill-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 232px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.alarm-empty {
+  font-size: 12px;
+  color: var(--fg-dim);
+  padding: 4px 2px 2px;
+}
+.alarm-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 5px;
+  border-radius: 6px;
+  background: var(--fill-weak);
+  border: 1px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.15s ease;
+}
+.alarm-item:hover {
+  background: var(--fill-soft);
+  border-color: var(--stroke);
+}
+.alarm-item.off {
+  opacity: 0.5;
+}
+.alarm-power {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--fg-dim);
+  background: transparent;
+  border: 1px solid var(--stroke);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.alarm-power.on {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.alarm-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  text-align: left;
+  cursor: pointer;
+}
+.alarm-main:hover {
+  background: transparent;
+}
+.alarm-time {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.alarm-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.alarm-label {
+  font-size: 11.5px;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.alarm-repeat {
+  font-size: 10.5px;
+  color: var(--fg-dim);
+}
+/* 闹铃面板里的「待办」来源标记，和历史闹铃区分开 */
+.alarm-todo-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 4px;
+  font-size: 9.5px;
+  font-style: normal;
+  line-height: 1.5;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--accent);
+  vertical-align: 1px;
+}
+.alarm-del {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--fg-dim);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.alarm-item:hover .alarm-del,
+.alarm-del:focus-visible {
+  opacity: 1;
+}
+.alarm-del:hover {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.14);
+}
+
+/* 展开的编辑区：改时间 / 名称 / 重复星期 */
+.alarm-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px;
+  margin: -1px 0 2px;
+  border-radius: 6px;
+  background: var(--fill-weak);
+  border: 1px dashed var(--stroke);
+}
+.alarm-edit-row {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+}
+.alarm-edit input[type='time'],
+.alarm-add input[type='time'] {
+  flex: 0 0 92px;
+  padding: 3px 5px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-edit-name,
+.alarm-add-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.alarm-days {
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+}
+.alarm-day {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  padding: 0;
+  font-size: 10.5px;
+  line-height: 1;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid var(--stroke);
+  color: var(--fg-dim);
+}
+.alarm-day.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.alarm-edit-hint {
+  font-size: 10.5px;
+  color: var(--fg-dim);
+}
+
+.alarm-add {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: 2px;
+}
+.alarm-add-btn {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.alarm-sound {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+.alarm-sound input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---------- 响铃状态 ---------- */
+.alarm-ringing {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 186px;
+}
+.alarm-ringing-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #ff8080;
+}
+.alarm-ringing-bell {
+  display: inline-block;
+  font-size: 13px;
+  animation: alarm-bell 0.6s ease-in-out infinite;
+}
+.alarm-ringing-time {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.alarm-ringing-label {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.alarm-ringing-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.alarm-ringing-actions button {
+  flex: 1 1 0;
+  padding: 5px 6px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+button.alarm-stop {
+  background: #e5484d;
+  border-color: #e5484d;
+  color: #fff;
+  font-weight: 600;
+}
+button.alarm-stop:hover {
+  background: #f0565b;
+  border-color: #f0565b;
+}
+
+/* 响铃时整个时钟面板闪红边 —— 「闪烁提醒」的第一层 */
+.widget.ringing {
+  border-color: rgba(255, 96, 96, 0.85);
+  animation: alarm-widget 1.15s ease-in-out infinite;
+}
+@keyframes alarm-widget {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(255, 96, 96, 0.45), 0 0 24px rgba(255, 60, 60, 0.28),
+      var(--panel-shadow);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(255, 96, 96, 0.9), 0 0 48px rgba(255, 60, 60, 0.6),
+      var(--panel-shadow);
+  }
+}
+@keyframes alarm-bell {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+
+/* ---------- 全屏闪烁 + 闹铃卡片 ---------- */
+.alarm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+}
+.alarm-vignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 170px 34px rgba(255, 58, 58, 0.42);
+  animation: alarm-flash 1.15s ease-in-out infinite;
+}
+@keyframes alarm-flash {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+.alarm-card {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 260px;
+  padding: 20px 26px 18px;
+  background: var(--panel-bg);
+  opacity: var(--panel-opacity);
+  backdrop-filter: var(--blur);
+  border: 1px solid rgba(255, 96, 96, 0.55);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(255, 96, 96, 0.25), 0 18px 60px rgba(0, 0, 0, 0.55),
+    0 0 48px rgba(255, 60, 60, 0.35);
+  color: var(--fg);
+  pointer-events: auto;
+  animation: alarm-card-in 0.22s ease-out;
+}
+@keyframes alarm-card-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+.alarm-card-ring {
+  font-size: 24px;
+  line-height: 1;
+  animation: alarm-bell 0.6s ease-in-out infinite;
+}
+.alarm-card-time {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+.alarm-card-label {
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+.alarm-card-tag {
+  margin-top: 5px;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--accent);
+}
+.alarm-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  width: 100%;
+}
+.alarm-card-actions button {
+  flex: 1 1 0;
+  padding: 7px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+/* 待办提醒专属：响铃时人就在跟前，顺手勾掉 */
+button.alarm-done {
+  background: #2f9e44;
+  border-color: #2f9e44;
+  color: #fff;
+  font-weight: 600;
+}
+button.alarm-done:hover {
+  background: #37b24d;
+  border-color: #37b24d;
+}
+
+/* ═══════════ 本地查找面板（Ctrl+Shift+F）═══════════
+   独立窗口，但沿用桌面管家的面板变量：同一套毛玻璃、同一套字色，
+   打开时不会像另一个软件。 */
+.finder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--panel-bg-a, var(--panel-bg));
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  box-shadow: var(--panel-highlight), 0 24px 70px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  color: var(--fg);
+  animation: finder-in 0.13s ease-out;
+}
+@keyframes finder-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.finder-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--fill-soft);
+  flex: 0 0 auto;
+}
+.finder-glass {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--accent);
+  opacity: 0.9;
+}
+.finder-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font-size: 15.5px;
+  line-height: 1.4;
+  color: var(--fg);
+  caret-color: var(--accent);
+}
+.finder-input::placeholder { color: var(--fg-dim); opacity: 0.85; }
+.finder-hint {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  letter-spacing: 0.3px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--stroke);
+  background: var(--fill-weak);
+  color: var(--fg-dim);
+}
+.finder-clear {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--fill-soft);
+  color: var(--fg-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.finder-clear:hover { background: var(--stroke-strong); color: var(--fg); }
+
+.finder-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+.finder-body::-webkit-scrollbar { width: 8px; }
+.finder-body::-webkit-scrollbar-thumb {
+  background: var(--stroke-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.finder-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.finder-row.on {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+}
+.finder-ext {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 26px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.finder-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.finder-name {
+  font-size: 13.2px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.finder-name mark {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--fg);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.finder-dir {
+  font-size: 10.8px;
+  line-height: 1.3;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.finder-meta {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-size: 10.5px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.finder-empty {
+  padding: 44px 40px;
+  text-align: center;
+}
+.finder-empty-title {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  color: var(--fg);
+  opacity: 0.9;
+}
+.finder-empty-tip {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.8;
+  color: var(--fg-dim);
+}
+.finder-empty-tip code {
+  font-family: inherit;
+  padding: 1px 5px;
+  margin: 0 2px;
+  border-radius: 4px;
+  background: var(--fill-soft);
+  color: var(--fg);
+  font-size: 11px;
+}
+
+.finder-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--fill-soft);
+  background: var(--fill-weak);
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.finder-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.finder-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--note-done-bd, #46c07a);
+  flex: 0 0 auto;
+}
+.finder-dot.indexing {
+  background: var(--note-doing-bd, #e0a52e);
+  animation: finder-pulse 1.1s ease-in-out infinite;
+}
+@keyframes finder-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.finder-count {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+.finder-toast { color: #ff9a9a; }

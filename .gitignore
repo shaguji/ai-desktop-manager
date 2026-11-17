@@ -1,0 +1,24 @@
+node_modules/
+node_modules_bak_*/
+out/
+dist/
+release/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 调试 / 临时产物
+.tmp-*
+.shots/
+notes-src/.shots/
+scripts/*.png
+scripts/_icons/
+scripts/_screen.png
+
+# 依赖锁文件的历史备份
+package-lock.bak_*
+
+# 含企业标识 / 内网信息的素材只在本机使用，不进公开仓库
+resources/wallpapers/42-正能量-拾级而上破晓.jpg
+resources/wallpapers/43-正能量-数字蓝图连未来.jpg
