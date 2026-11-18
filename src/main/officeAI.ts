@@ -726,7 +726,14 @@ export async function runOfficeAutoTask(
     }
 
     /* 5. 轮询等回复 */
-    const timeout = Math.max(15000, site.resultTimeoutMs || DEFAULT_OFFICE_SITE.resultTimeoutMs!);
+    /* 素材多、生成慢：季报/年报的提示词与输出都远长于周报，
+       按提示词长度给超时加余量（每 4k 字 +30 秒，上限 10 分钟），
+       否则大报告会被默认 180 秒误判为超时、白白降级手动 */
+    const promptChars = prep.type === 'text' ? String(prep.text || '').length
+      : prep.type === 'file' ? String(prep.prompt || '').length
+      : 0;
+    const baseTimeout = Math.max(15000, site.resultTimeoutMs || DEFAULT_OFFICE_SITE.resultTimeoutMs!);
+    const timeout = Math.min(600000, baseTimeout + Math.ceil(promptChars / 4000) * 30000);
     const minChars = site.resultMinChars || 4;
     const startMark = (site.resultStartText || '').trim();
     const pollMs = 2000;

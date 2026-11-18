@@ -1645,6 +1645,17 @@
 
   function registerOfficeSkill(id, def) { OFFICE_SKILLS[id] = def; }
 
+  /**
+   * 工作台输入框上限约 1 万字（站点参数里可查）：季报/年报素材多时提示词会超，
+   * 超出的部分会被站点截断，生成结果就漏内容。提前提醒，不阻断（用户可能想先试）。
+   */
+  const OFFICE_INPUT_LIMIT = 9500;
+  function warnLongPrompt(prep) {
+    const chars = (prep && prep.chars) || 0;
+    if (chars <= OFFICE_INPUT_LIMIT) return;
+    toast(`提示词约 ${Math.round(chars / 1000)}k 字，超过工作台输入上限（约 1 万字），超出部分会被截断。建议缩小时间范围，或先按月生成再汇总`, '!');
+  }
+
   registerOfficeSkill('image-ocr', {
     title: '图片识别',
     /* 队列逐张复用同一个工作台窗口，跑完最后一张由 officeAutoQueue 统一关闭 */
@@ -2152,6 +2163,7 @@
       }
       const go = $('btnAIGo');
       if (go) { go.disabled = true; go.textContent = '办公网生成中…'; }
+      warnLongPrompt(prep);
       const restore = () => {
         officeBtn.disabled = false;
         officeBtn.textContent = '办公网生成';
@@ -2431,6 +2443,7 @@
           officeBtn.textContent = '办公网生成';
           if (go) { go.disabled = false; go.textContent = '开始生成'; }
         };
+        warnLongPrompt(prep);
         const ok = await officeAutoRun(OFFICE_SKILLS.summary, { type: 'text', text: prep.prompt }, {
           opts,
           stage: (t) => { box.className = 'ai-status'; box.textContent = t; },
@@ -2484,7 +2497,7 @@
         <button class="btn btn-primary" id="ofFill">读取结果并生成</button>
       </div>
       ${url ? `<div class="of-url">工作台：${esc(url)}</div>` : ''}
-      ${prep.chars > 30000 ? `<div class="of-url">提示词较长（约 ${kChars}k 字）。如果工作台提示内容超长，把时间范围改小一些，或先按月生成。</div>` : ''}`;
+      ${prep.chars > OFFICE_INPUT_LIMIT ? `<div class="of-url">提示词约 ${kChars}k 字，超过工作台输入上限（约 1 万字），超出部分会被截断。建议把时间范围改小，或先按月生成再汇总。</div>` : ''}`;
 
     $('ofRecopy').onclick = async () => {
       const rr = await NoteBridge.officeCopy(prep.prompt);
