@@ -344,6 +344,12 @@
         return null;
       }
     },
+
+    /** 关闭办公网工作台窗口（结果回填成功后调用；失败路径保持打开） */
+    officeClose() {
+      if (!inShell || typeof api.notesOfficeClose !== 'function') return;
+      try { void api.notesOfficeClose(); } catch (e) { /* ignore */ }
+    },
     async officeSetSite(patch) {
       if (!inShell || typeof api.notesOfficeSetSite !== 'function') {
         return { ok: false, error: '当前环境不支持' };

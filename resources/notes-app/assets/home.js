@@ -1677,6 +1677,8 @@
       if (r && r.ok && r.text && r.text.trim()) {
         kill();
         if (ctx.onText) ctx.onText(r.text.trim());
+        /* 转写结果已回填：工作台窗口用完了，关掉 */
+        if (NoteBridge.officeClose) { try { NoteBridge.officeClose(); } catch (e) { /* ignore */ } }
         toast('办公网转写完成，文字已插入', '🎙️');
         return;
       }
@@ -1693,6 +1695,7 @@
         if (!text) { toast((rr && rr.error) || '剪贴板是空的，请先复制工作台的回复', '!'); return; }
         kill();
         if (ctx.onText) ctx.onText(text);
+        if (NoteBridge.officeClose) { try { NoteBridge.officeClose(); } catch (e) { /* ignore */ } }
         toast('转写结果已插入', '🎙️');
       };
       lock(false);

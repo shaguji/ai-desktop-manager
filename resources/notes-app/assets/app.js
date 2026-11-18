@@ -1627,6 +1627,10 @@
       if (await prepareOfficeItem()) showOfficeFlow();
       return;
     }
+    /* 最后一张也回填完了，工作台窗口关掉 */
+    if (window.NoteBridge && NoteBridge.officeClose) {
+      try { NoteBridge.officeClose(); } catch (e) { /* ignore */ }
+    }
     hideOfficeFlow();
   }
 
@@ -1643,6 +1647,8 @@
 
   registerOfficeSkill('image-ocr', {
     title: '图片识别',
+    /* 队列逐张复用同一个工作台窗口，跑完最后一张由 officeAutoQueue 统一关闭 */
+    autoClose: false,
     buildPrep(ctx) { return { type: 'image', dataUrl: ctx.item.dataUrl }; },
     async apply(text, ctx) {
       if (!text || !text.trim()) throw new Error('工作台没有返回文字');
@@ -1682,6 +1688,10 @@
     if (r && r.ok) {
       try {
         const desc = await skill.apply(r.text, hooks);
+        /* 回填成功：关掉工作台窗口（图片队列标记 autoClose=false，跑完统一关） */
+        if (skill.autoClose !== false && window.NoteBridge && NoteBridge.officeClose) {
+          try { NoteBridge.officeClose(); } catch (e) { /* ignore */ }
+        }
         hooks.onDone(desc);
         return true;
       } catch (err) {
@@ -1742,6 +1752,10 @@
       });
       if (!ok) return; /* fallback 已接管 */
       officeIdx += 1;
+    }
+    /* 队列全部成功：工作台窗口已经没用了，关掉 */
+    if (window.NoteBridge && NoteBridge.officeClose) {
+      try { NoteBridge.officeClose(); } catch (e) { /* ignore */ }
     }
     hideOfficeFlow();
   }
@@ -1858,9 +1872,11 @@
               <label>发送按钮选择器<textarea id="officeSendSel" rows="2" placeholder="留空按「发送/send/提交」文字探测">${esc(site.sendSel || '')}</textarea></label>
               <label>回复区选择器<textarea id="officeRespSel" rows="2" placeholder="留空用整页文本差分启发式">${esc(site.responseSel || '')}</textarea></label>
               <label>图片任务发送指令<input type="text" id="officeImagePrompt" value="${esc(site.imagePrompt || '提取图片中的文字')}"></label>
+              <label>回答起始标记<input type="text" id="officeStartMark" value="${esc(site.resultStartText || '')}" placeholder="如：执行完成（留空 = 不裁）"></label>
+              <label>回答结束标记<input type="text" id="officeEndMark" value="${esc(site.resultEndText || '')}" placeholder="如：以上内容由AI工作室…生成（留空 = 不裁）"></label>
               <label>等回复超时（秒）<input type="number" id="officeTimeout" min="15" max="900" value="${Math.round((site.resultTimeoutMs || 180000) / 1000)}"></label>
             </div>
-            <div class="hint">工作台页面结构特殊、自动识别不准时，在这里填 CSS 选择器。查看方法：工作台窗口里右键 → 检查（如果被禁用则按 F12）。改完保存后生效。</div>
+            <div class="hint">工作台页面结构特殊、自动识别不准时，在这里填 CSS 选择器。回答起止标记用来从整页文本里截出回答正文（取「起始标记」之后、「结束标记」之前的内容），生成结果带出页面按钮文案时调它。查看方法：工作台窗口里右键 → 检查（如果被禁用则按 F12）。改完保存后生效。</div>
           </details>
         </div>
         <div class="ai-status" id="aiStatus"></div>
@@ -1944,6 +1960,8 @@
             sendSel: $('officeSendSel').value.trim(),
             responseSel: $('officeRespSel').value.trim(),
             imagePrompt: $('officeImagePrompt').value.trim() || '提取图片中的文字',
+            resultStartText: $('officeStartMark').value.trim(),
+            resultEndText: $('officeEndMark').value.trim(),
             resultTimeoutMs: Math.max(15, Math.min(900, parseInt($('officeTimeout').value, 10) || 180)) * 1000
           });
         } catch (e) { /* 非壳环境忽略 */ }
@@ -2490,6 +2508,10 @@
       } catch (err) {
         toast('生成笔记失败：' + (err && err.message ? err.message : err), '!');
         return;
+      }
+      /* 结果已成功回填：工作台窗口用完了，关掉 */
+      if (window.NoteBridge && NoteBridge.officeClose) {
+        try { NoteBridge.officeClose(); } catch (e) { /* ignore */ }
       }
       onDone(result);
     };

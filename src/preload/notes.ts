@@ -71,6 +71,8 @@ const api = {
   notesOfficeAutoCancel: () => ipcRenderer.invoke('notes:office:autoCancel'),
   notesOfficeGetSite: () => ipcRenderer.invoke('notes:office:getSite'),
   notesOfficeSetSite: (patch: any) => ipcRenderer.invoke('notes:office:setSite', patch),
+  /* 关闭办公网工作台窗口（结果回填成功后调用） */
+  notesOfficeClose: () => ipcRenderer.invoke('notes:office:close'),
 
   // ---- 事件 ----
   on: (channel: string, cb: (...args: any[]) => void) => {

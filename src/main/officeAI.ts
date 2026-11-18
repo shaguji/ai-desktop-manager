@@ -347,7 +347,13 @@ export function readOfficeOCRResult(): { ok: boolean; text?: string; error?: str
 
 /** 文本版第三步：生成完成后，从剪贴板读取复制好的总结正文 */
 export function readOfficeTextResult(): { ok: boolean; text?: string; error?: string } {
-  return readClipboardText('生成结果');
+  const r = readClipboardText('生成结果');
+  if (!r.ok || !r.text) return r;
+  /* 手动复制也可能多框进前后的页面文字：同样按起止标记裁一遍（幂等） */
+  const site = readOfficeSite();
+  const text = extractMarkedText(r.text, site.resultStartText || '', site.resultEndText || '');
+  if (text) return { ok: true, text };
+  return r; /* 标记把内容裁空了说明复制的就是别的东西，保留原文让上层判断 */
 }
 
 /** 应用退出时把工作台窗口一起带走，避免托盘退出后残留进程 */
@@ -384,6 +390,10 @@ export interface OfficeSite {
   resultTimeoutMs?: number;
   /** 认为回复有效所需的最小字符数 */
   resultMinChars?: number;
+  /** 回答起始标记：读到该标记后只取其后内容（空 = 不裁） */
+  resultStartText?: string;
+  /** 回答结束标记：只取该标记之前的内容（空 = 不裁） */
+  resultEndText?: string;
 }
 
 export const DEFAULT_OFFICE_SITE: OfficeSite = {
@@ -392,7 +402,12 @@ export const DEFAULT_OFFICE_SITE: OfficeSite = {
   responseSel: '',
   imagePrompt: '提取图片中的文字',
   resultTimeoutMs: 180000,
-  resultMinChars: 4
+  resultMinChars: 4,
+  /* 整页差分/选择器读回的文本会混入页面 UI 文案和提问回显：默认按这对标记
+     截出回答正文（发送状态「执行完成」之后、生成声明「以上内容由…」之前）。
+     站点不同可在设置里改写或清空（清空 = 不裁）。 */
+  resultStartText: '执行完成',
+  resultEndText: '以上内容由AI工作室通过人工智能技术生成'
 };
 
 /** 读站点适配器配置（AI 配置 JSON 的 officeSite 字段），坏字段一律回落默认 */
@@ -409,6 +424,12 @@ export function readOfficeSite(): OfficeSite {
       if (Number.isFinite(t) && t >= 15000 && t <= 900000) site.resultTimeoutMs = t;
       const m = Number((raw as any).resultMinChars);
       if (Number.isFinite(m) && m >= 1 && m <= 5000) site.resultMinChars = m;
+      /* 起止标记允许显式清空（等于关闭截取），只有字段缺失时才落默认值 */
+      for (const k of ['resultStartText', 'resultEndText'] as const) {
+        if (Object.prototype.hasOwnProperty.call(raw, k)) {
+          (site as any)[k] = String((raw as any)[k] ?? '').trim();
+        }
+      }
     }
   } catch (e) {
     console.warn('[officeAI] read site adapter failed', e);
@@ -611,6 +632,23 @@ function cleanDiffText(s: string): string {
 }
 
 /**
+ * 按起止标记截出回答正文：读回的文本会带页面 UI 文案与提问回显，
+ * 标记在设置里可改可清空；找不到标记就原样返回（宁可多带，不误删正文）。
+ */
+function extractMarkedText(text: string, startMark: string, endMark: string): string {
+  let t = text;
+  if (startMark) {
+    const i = t.indexOf(startMark);
+    if (i >= 0) t = t.slice(i + startMark.length);
+  }
+  if (endMark) {
+    const j = t.lastIndexOf(endMark);
+    if (j >= 0) t = t.slice(0, j);
+  }
+  return t.trim();
+}
+
+/**
  * 自动执行一次办公网任务。
  * 失败不销毁窗口：返回 manual=true 让渲染层切回手动接力引导。
  */
@@ -708,7 +746,7 @@ export async function runOfficeAutoTask(
         const base = baselineSel || '';
         let text = snap;
         if (base && snap.startsWith(base)) text = snap.slice(base.length);
-        text = stripEcho(text, prompts).trim();
+        text = extractMarkedText(stripEcho(text, prompts), site.resultStartText || '', site.resultEndText || '');
         if (text.length >= minChars && text === lastText) {
           stableCount++;
           if (stableCount >= 2) {
@@ -725,7 +763,11 @@ export async function runOfficeAutoTask(
         if (cur === null) { lastErr = '读取页面失败'; continue; }
         const base = baselineBody || '';
         const pl = commonPrefixLen(base, cur);
-        const suffix = cleanDiffText(stripEcho(cur.slice(pl), prompts));
+        const suffix = extractMarkedText(
+          cleanDiffText(stripEcho(cur.slice(pl), prompts)),
+          site.resultStartText || '',
+          site.resultEndText || ''
+        );
         if (suffix.length >= minChars && suffix === lastText) {
           stableCount++;
           if (stableCount >= 2) {

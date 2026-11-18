@@ -43,6 +43,7 @@ import {
   readOfficeTextResult,
   openOfficeAIWindow,
   officeAIUrl,
+  closeOfficeAIWindow,
   runOfficeAutoTask,
   cancelOfficeAutoTask,
   readOfficeSite,
@@ -444,6 +445,8 @@ export function registerIpc(ctx: IpcContext): void {
   ipcMain.handle('notes:office:autoCancel', () => cancelOfficeAutoTask());
   ipcMain.handle('notes:office:getSite', () => readOfficeSite());
   ipcMain.handle('notes:office:setSite', (_e, patch: any) => writeOfficeSite(patch || {}));
+  /* 回填成功后由渲染层主动关窗（失败/取消时不关，留给手动接力） */
+  ipcMain.handle('notes:office:close', () => { closeOfficeAIWindow(); return { ok: true }; });
 
   // ---- app ----
   ipcMain.handle('app:setLoginItem', (_e, enabled: boolean) => {
