@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import type { NoteItem, NoteStatus } from '../../../shared/types';
+import { NOTE_TITLE } from '../../../shared/defaults';
 import {
   WEEK_LABELS,
   dateKey,
@@ -392,7 +393,7 @@ export function NoteWidget() {
       resizable
       minW={220}
       minH={170}
-      title={`便签 · ${summary}${doing ? ` · ${doing} 进行中` : ''}${
+      title={`${NOTE_TITLE} · ${summary}${doing ? ` · ${doing} 进行中` : ''}${
         remindCount ? ` · ${remindCount} 个提醒` : ''
       }`}
     >

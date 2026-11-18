@@ -4,6 +4,9 @@ import type { WidgetState, ThemeConfig, ThemePreset } from './types';
 export const FENCE_TITLE = '收你没商量';
 export const LEGACY_FENCE_TITLE = '桌面收纳';
 
+/** 便签组件的显示名称（标题栏 / 设置页），旧版本叫「便签」。 */
+export const NOTE_TITLE = '治好健忘症';
+
 /** panelBg recommended for each preset (users can still override it). */
 export const PRESET_PANEL_BG: Record<ThemePreset, string> = {
   dark: '#1e2030',

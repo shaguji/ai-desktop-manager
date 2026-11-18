@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { api } from '../api';
 import type { CategoryKey, CategoryRule, TargetMapping, WallpaperMode, ThemePreset } from '../../shared/types';
 import { nextCustomKey, OTHER_KEY } from '../../shared/categories';
-import { PRESET_PANEL_BG, FENCE_TITLE } from '../../shared/defaults';
+import { PRESET_PANEL_BG, FENCE_TITLE, NOTE_TITLE } from '../../shared/defaults';
 
 const THEME_PRESETS: Record<ThemePreset, { name: string; swatch1: string; swatch2: string }> = {
   dark: { name: '深空', swatch1: '#1e2030', swatch2: '#4f8cff' },
@@ -525,7 +525,7 @@ export function Settings() {
             [
               ['clock', '时钟'],
               ['calendar', '日历'],
-              ['note', '便签']
+              ['note', NOTE_TITLE]
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="check">
