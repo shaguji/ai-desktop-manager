@@ -621,7 +621,7 @@ function stripEcho(suffix: string, prompts: string[]): string {
 }
 
 /** 差分模式会把页面 UI 文案（发送/复制/停止生成…）一起带进来：按行剔除纯按钮文字 */
-const UI_LABEL_RE = /^(发送|发送消息|提交|确定|取消|复制|复制代码|重新生成|停止|停止生成|停止输出|编辑|分享|点赞|踩|send|submit|copy|regenerate|stop)$/i;
+const UI_LABEL_RE = /^(发送|发送消息|提交|确定|取消|取 消|保存|保 存|复制|复制代码|重新生成|停止|停止生成|停止输出|停止响应|思考中|深度思考|再次回答|可信搜索|后端加密|知识配置|知识库配置|参数配置|大模型配置|恢复默认|调用大模型|编辑|分享|点赞|踩|send|submit|copy|regenerate|stop)$/i;
 function cleanDiffText(s: string): string {
   return s
     .split('\n')
@@ -728,6 +728,7 @@ export async function runOfficeAutoTask(
     /* 5. 轮询等回复 */
     const timeout = Math.max(15000, site.resultTimeoutMs || DEFAULT_OFFICE_SITE.resultTimeoutMs!);
     const minChars = site.resultMinChars || 4;
+    const startMark = (site.resultStartText || '').trim();
     const pollMs = 2000;
     const deadline = Date.now() + timeout;
     let lastText = '';
@@ -742,6 +743,14 @@ export async function runOfficeAutoTask(
       if (site.responseSel) {
         const snap = await evalJs<string>(win, snapshotJs(site.responseSel));
         if (snap === null) { lastErr = '读取页面失败'; continue; }
+        /* 完成门：配置了起始标记但页面还没出现（模型仍在「思考中」，
+           页面文本恰好静止），绝不能把提问回显 + UI 文案当成结果收口 */
+        if (startMark && !snap.includes(startMark)) {
+          stableCount = 0;
+          lastText = '';
+          dbg('wait-start');
+          continue;
+        }
         /* 选择器模式：取基线之后新增的整段 */
         const base = baselineSel || '';
         let text = snap;
@@ -761,6 +770,13 @@ export async function runOfficeAutoTask(
       } else {
         const cur = await evalJs<string>(win, snapshotJs(''));
         if (cur === null) { lastErr = '读取页面失败'; continue; }
+        /* 完成门（差分模式同理）：起始标记没出现就继续等 */
+        if (startMark && !cur.includes(startMark)) {
+          stableCount = 0;
+          lastText = '';
+          dbg('wait-start');
+          continue;
+        }
         const base = baselineBody || '';
         const pl = commonPrefixLen(base, cur);
         const suffix = extractMarkedText(
@@ -790,7 +806,9 @@ export async function runOfficeAutoTask(
         ? `读取回复失败：${lastErr}`
         : partial && partial.length >= minChars
           ? `等待回复超时（${Math.round(timeout / 1000)} 秒）——内容可能还在生成，请稍后手动复制`
-          : `等待回复超时（${Math.round(timeout / 1000)} 秒）`,
+          : startMark
+            ? `等待回复超时（${Math.round(timeout / 1000)} 秒）——页面一直没出现完成标记「${startMark}」，可能还在思考或本次请求失败，可在窗口里手动处理`
+            : `等待回复超时（${Math.round(timeout / 1000)} 秒）`,
       url: officeAIUrl()
     };
   } catch (e: any) {
