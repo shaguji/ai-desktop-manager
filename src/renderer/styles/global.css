@@ -348,6 +348,31 @@ textarea {
   opacity: 0.85;
   border-color: var(--accent);
 }
+/* 最小化（收成标题条）：与关闭键同款，hover 才显形 */
+.widget-min {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.widget-min:hover {
+  background: var(--chip-hover-bg);
+  color: var(--chip-hover-fg);
+}
+.widget-min:active {
+  transform: scale(0.88);
+  background: var(--stroke-strong);
+}
 .widget-close {
   width: 24px;
   height: 24px;

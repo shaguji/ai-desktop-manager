@@ -96,7 +96,7 @@ export function Fence({ fence }: { fence: FenceLayout }) {
         <span className="fence-actions no-drag">
           <button
             className="fence-btn"
-            title={fence.collapsed ? '展开' : '折叠'}
+            title={fence.collapsed ? '还原（展开窗口）' : '最小化（收成标题条）'}
             onClick={() => updateFence(fence.id, { collapsed: !fence.collapsed })}
           >
             {fence.collapsed ? '▢' : '—'}

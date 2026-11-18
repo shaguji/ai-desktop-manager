@@ -91,6 +91,11 @@ export interface WidgetPosition {
    */
   w?: number;
   h?: number;
+  /**
+   * 收成标题条（最小化）：只留标题栏，位置与内容都保留，再点还原。
+   * 缺省 / false = 展开。
+   */
+  collapsed?: boolean;
 }
 
 /** Where a note entry stands. Drives its background colour. */

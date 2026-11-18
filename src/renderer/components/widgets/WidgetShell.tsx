@@ -90,13 +90,17 @@ export function WidgetShell({
 
   const w = size?.w ?? pos.w;
   const h = size?.h ?? pos.h;
+  /* 最小化 = 只留标题条：隐藏 body 与缩放把手，高度交给内容自适应。
+     位置 / 尺寸 / 待办内容原样留在配置里，还原后完全恢复。 */
+  const collapsed = !!pos.collapsed;
   const style: CSSProperties = {
     left: Math.max(0, (size?.left ?? x) - shift.x),
     top: Math.max(0, pos.y - shift.y)
   };
   if (resizable) {
     if (w) style.width = w;
-    if (h) style.height = h;
+    if (collapsed) style.height = undefined; /* 标题条：跟随 header 内容 */
+    else if (h) style.height = h;
   }
 
   return (
@@ -106,7 +110,8 @@ export function WidgetShell({
       data-interactive
       data-wkey={wkey}
       /* Explicit height → let the body/list take up the extra room. */
-      data-sized={h ? '1' : undefined}
+      data-sized={!collapsed && h ? '1' : undefined}
+      data-collapsed={collapsed ? '1' : undefined}
       style={style}
       onMouseEnter={enterInteractive}
       onMouseLeave={leaveInteractive}
@@ -117,6 +122,13 @@ export function WidgetShell({
         <div className="widget-actions">
           {actions}
           <button
+            className="widget-min no-drag"
+            title={collapsed ? '还原' : '最小化（收成标题条）'}
+            onClick={() => updateWidgets({ [wkey]: { ...pos, collapsed: !collapsed } } as any)}
+          >
+            {collapsed ? '▢' : '—'}
+          </button>
+          <button
             className="widget-close no-drag"
             title="关闭组件"
             onClick={() => updateWidgets({ [wkey]: { ...pos, enabled: false } } as any)}
@@ -125,9 +137,9 @@ export function WidgetShell({
           </button>
         </div>
       </div>
-      <div className="widget-body">{children}</div>
+      {!collapsed && <div className="widget-body">{children}</div>}
 
-      {resizable && (
+      {resizable && !collapsed && (
         <>
           <div
             className="widget-grip e no-drag"
