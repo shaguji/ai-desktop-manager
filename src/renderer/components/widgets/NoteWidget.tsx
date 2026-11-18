@@ -428,8 +428,10 @@ export function NoteWidget() {
             }
           }}
         />
-        <button onClick={add} title="添加事项">
-          ＋
+        <button className="note-add-btn" onClick={add} title="添加事项" aria-label="添加事项">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
         </button>
       </div>
     </WidgetShell>

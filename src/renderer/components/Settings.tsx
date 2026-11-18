@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { api } from '../api';
 import type { CategoryKey, CategoryRule, TargetMapping, WallpaperMode, ThemePreset } from '../../shared/types';
 import { nextCustomKey, OTHER_KEY } from '../../shared/categories';
-import { PRESET_PANEL_BG } from '../../shared/defaults';
+import { PRESET_PANEL_BG, FENCE_TITLE } from '../../shared/defaults';
 
 const THEME_PRESETS: Record<ThemePreset, { name: string; swatch1: string; swatch2: string }> = {
   dark: { name: '深空', swatch1: '#1e2030', swatch2: '#4f8cff' },
@@ -344,7 +344,7 @@ export function Settings() {
 
   const defaultFenceTitle = () => {
     const names = newFenceCats.map((k) => labelOf.get(k)).filter(Boolean) as string[];
-    if (names.length === 0) return '桌面收纳';
+    if (names.length === 0) return FENCE_TITLE;
     if (names.length <= 2) return names.join('·');
     return `${names[0]}等 ${names.length} 类`;
   };

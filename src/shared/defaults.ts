@@ -1,5 +1,9 @@
 import type { WidgetState, ThemeConfig, ThemePreset } from './types';
 
+/** 收纳窗口的默认标题；旧版本叫「桌面收纳」，加载配置时统一迁移过来。 */
+export const FENCE_TITLE = '收你没商量';
+export const LEGACY_FENCE_TITLE = '桌面收纳';
+
 /** panelBg recommended for each preset (users can still override it). */
 export const PRESET_PANEL_BG: Record<ThemePreset, string> = {
   dark: '#1e2030',

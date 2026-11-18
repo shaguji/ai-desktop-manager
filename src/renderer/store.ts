@@ -11,7 +11,7 @@ import type {
   WidgetState,
   ThemeConfig
 } from '../shared/types';
-import { DEFAULT_WIDGETS, DEFAULT_THEME } from '../shared/defaults';
+import { DEFAULT_WIDGETS, DEFAULT_THEME, FENCE_TITLE, LEGACY_FENCE_TITLE } from '../shared/defaults';
 import { cloneDefaultCategories, normalizeCategories, OTHER_KEY, tabRank } from '../shared/categories';
 import {
   buildTodoAlarm,
@@ -121,7 +121,7 @@ function layoutFences(rules: CategoryRule[], scan: ScanResult | null): FenceLayo
   return [
     {
       id: 'f' + fenceSeq++,
-      title: '桌面收纳',
+      title: FENCE_TITLE,
       categories: tabs,
       active: tabs[0],
       x: 24,
@@ -158,7 +158,11 @@ function normalizeFences(raw: any): FenceLayout[] {
         typeof f.active === 'string' && cats.includes(f.active) ? f.active : cats[0];
       return {
         id: String(f.id ?? 'f' + fenceSeq++),
-        title: String(f.title ?? '桌面收纳'),
+        /* 旧配置里叫「桌面收纳」的统一迁移；用户自定义过的标题原样保留 */
+        title: (() => {
+          const t = String(f.title ?? FENCE_TITLE);
+          return t === LEGACY_FENCE_TITLE ? FENCE_TITLE : t;
+        })(),
         categories: cats,
         active,
         x: Number.isFinite(f.x) ? Number(f.x) : 24,
@@ -183,7 +187,7 @@ function normalizeFences(raw: any): FenceLayout[] {
       {
         ...first,
         id: first.id,
-        title: '桌面收纳',
+        title: FENCE_TITLE,
         categories: merged,
         active: merged[0],
         width: Math.max(first.width, FENCE_W),
@@ -403,7 +407,7 @@ export const useStore = create<State>()((set, get) => ({
     const cats = categories.filter((k) => typeof k === 'string' && k.length > 0);
     const f: FenceLayout = {
       id: 'f' + fenceSeq++,
-      title: title || '桌面收纳',
+      title: title || FENCE_TITLE,
       categories: cats,
       active: cats[0],
       x: 24,
