@@ -22,3 +22,9 @@ package-lock.bak_*
 # 含企业标识 / 内网信息的素材只在本机使用，不进公开仓库
 resources/wallpapers/42-正能量-拾级而上破晓.jpg
 resources/wallpapers/43-正能量-数字蓝图连未来.jpg
+
+# 文档临时压缩产物
+*.zip
+
+# Word 临时锁文件
+~$*.docx

@@ -78,6 +78,15 @@ test('prepareSummary 生成季度提示词：含要求、素材与下季度规�
   assert.ok(/\d/.test(prep.title) && prep.title.includes('季度'), '标题应为季度总结');
 });
 
+test('提示词强制工作明细用 Markdown 表格（含竖线与分隔线示范）', () => {
+  const { AI } = makeSandbox();
+  const range = AI.rangeFromDates('2026-07-01', '2026-09-30', 'quarter');
+  const prep = AI.prepareSummary({ range });
+  assert.ok(/工作明细[\s\S]*?\| 事项 \| 进展 \| 结果 \/ 数据 \| 状态 \|/.test(prep.prompt), '工作明细应给出表格表头');
+  assert.ok(prep.prompt.includes('| --- | --- | --- | --- |'), '表头下应给出 --- 分隔线示范');
+  assert.ok(/Markdown 表格|竖线 \| 分隔/.test(prep.prompt), '系统要求里应明确 Markdown 表格');
+});
+
 test('时间段内没有笔记时给出可读错误', () => {
   const { AI } = makeSandbox();
   const range = AI.rangeFromDates('2020-01-01', '2020-03-31', 'quarter');

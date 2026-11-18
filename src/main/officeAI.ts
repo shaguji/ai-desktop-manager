@@ -588,15 +588,72 @@ function filePasteJs(dataUrl: string, mime: string, name: string): string {
 }
 
 /** 读当前页面文本快照（回复选择器模式 / 整页差分模式） */
-function snapshotJs(responseSel: string): string {
-  if (responseSel) {
-    return `(() => {
-      let nodes = [];
-      try { nodes = Array.from(document.querySelectorAll(${JSON.stringify(responseSel)})); } catch (e) {}
-      return nodes.map((n) => String(n.innerText || '').trim()).filter((t) => t.length > 0).join('\\n---\\n');
-    })()`;
+/**
+ * 注入页面执行的文本提取函数。
+ *
+ * 坑：网页把 Markdown 表格渲染成 <table> 后，innerText 会把它拍平成空格分隔的
+ * 「伪表格」（事项 进展 状态），贴回笔记就丢了 | 分隔线，渲染器认不出是表格。
+ * 这里遍历 DOM，遇到 <table> 就还原成标准 Markdown 表格（表头后补 --- 分隔线）。
+ *
+ * 用函数 toString() 注入，函数体内不得引用外部作用域变量（打包后会改名）。
+ */
+function pageSnapshot(selector: string): string {
+  const block = /^(DIV|P|H[1-6]|LI|UL|OL|PRE|BR|SECTION|ARTICLE|BLOCKQUOTE|TR)$/;
+  const cellText = (el: Element): string =>
+    String((el as HTMLElement).innerText || '')
+      .replace(/\s*\n\s*/g, ' ')
+      .replace(/\|/g, '\\|')
+      .trim();
+  const extract = (root: Node): string => {
+    let out = '';
+    const walk = (n: Node): void => {
+      if (n.nodeType === 3) {
+        out += (n as Text).nodeValue || '';
+        return;
+      }
+      if (n.nodeType !== 1) return;
+      const el = n as Element;
+      const tag = el.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return;
+      if (tag === 'TABLE') {
+        const rows: string[] = [];
+        const trs = Array.from(el.querySelectorAll('tr'));
+        trs.forEach((tr, ri) => {
+          const cells = Array.from(tr.querySelectorAll('th,td'));
+          if (!cells.length) return;
+          rows.push('| ' + cells.map(cellText).join(' | ') + ' |');
+          if (ri === 0) rows.push('| ' + cells.map(() => '---').join(' | ') + ' |');
+        });
+        if (out && !out.endsWith('\n')) out += '\n';
+        out += rows.join('\n') + '\n';
+        return;
+      }
+      if (block.test(tag)) {
+        if (out && !out.endsWith('\n')) out += '\n';
+        Array.from(el.childNodes).forEach(walk);
+        if (!out.endsWith('\n')) out += '\n';
+      } else {
+        Array.from(el.childNodes).forEach(walk);
+      }
+    };
+    walk(root);
+    return out.replace(/\n{3,}/g, '\n\n').trim();
+  };
+  const roots: Node[] = [];
+  if (selector) {
+    try {
+      roots.push(...Array.from(document.querySelectorAll(selector)));
+    } catch (e) {
+      /* 选择器非法时退回空，走差分兜底 */
+    }
+  } else if (document.body) {
+    roots.push(document.body);
   }
-  return `document.body ? document.body.innerText : ''`;
+  return roots.map(extract).filter((t) => t.length > 0).join('\n---\n');
+}
+
+function snapshotJs(responseSel: string): string {
+  return `(${pageSnapshot.toString()})(${JSON.stringify(responseSel)})`;
 }
 
 /** 最长公共前缀长度（差分启发式的核心） */
