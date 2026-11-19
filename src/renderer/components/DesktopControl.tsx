@@ -16,10 +16,13 @@ export function DesktopControl() {
 
   /**
    * Drag position of the whole toolbar. `null` = the built-in top-right corner.
-   * The pill and the empty part of the button row both act as drag handles:
-   * press and move (>4px) to drag, a plain click on the pill still toggles.
+   * ANY part of the toolbar is now a drag handle — the pill, the button row's
+   * padding, and the buttons themselves. A press + move (>4px) drags; a plain
+   * click still fires the button (or toggles the pill).
    */
   const [pos, setPos] = useState<{ x: number; y: number } | null>(settings.toolbarPos ?? null);
+  /** True only while an actual drag is in progress (past the movement threshold). */
+  const [isMoving, setIsMoving] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   /** Set when the last mousedown turned into a drag, so the click that follows is ignored. */
   const draggedRef = useRef(false);
@@ -30,22 +33,29 @@ export function DesktopControl() {
 
   const beginDrag = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    /* Clear any stale flag from a previous drag that ended without a click. */
+    draggedRef.current = false;
+    /* The wallpaper picker lives inside this root: its clicks are not drags. */
+    if ((e.target as HTMLElement).closest('.wp-overlay')) return;
     const el = rootRef.current;
     if (!el) return;
-    e.preventDefault();
     const rect = el.getBoundingClientRect();
     const start = { mx: e.clientX, my: e.clientY, ox: rect.left, oy: rect.top };
     let moved = false;
     let latest = { x: rect.left, y: rect.top };
-    /* Capture the mouse right away: the pointer will leave the handle on the
-       first few pixels and the desktop layer would otherwise hand it back. */
-    setDragging(true);
 
     const move = (ev: MouseEvent) => {
       const dx = ev.clientX - start.mx;
       const dy = ev.clientY - start.my;
       if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return;
-      moved = true;
+      if (!moved) {
+        moved = true;
+        /* Only once it is a real drag do we capture the mouse: the pointer
+           will leave the toolbar and the desktop layer would hand it back. */
+        setDragging(true);
+        setIsMoving(true);
+      }
+      ev.preventDefault();
       /* Reserve room below for the expanded button row, otherwise dragging the
          toolbar near the bottom would push it off-screen on expand. */
       const maxX = Math.max(0, window.innerWidth - el.offsetWidth - 6);
@@ -60,6 +70,7 @@ export function DesktopControl() {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
       setDragging(false);
+      setIsMoving(false);
       if (!moved) return;
       draggedRef.current = true;
       void updateSettings({ toolbarPos: latest });
@@ -68,26 +79,29 @@ export function DesktopControl() {
     window.addEventListener('mouseup', up);
   };
 
+  /** Swallow the click that follows a drag so buttons don't fire on release. */
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (!draggedRef.current) return;
+    draggedRef.current = false;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const style: CSSProperties = pos ? { left: pos.x, top: pos.y, right: 'auto' } : {};
 
   return (
     <div
       ref={rootRef}
       className={`desktop-control${collapsed ? ' collapsed' : ''}${anchorLeft ? ' anchor-left' : ''}`}
+      data-dragging={isMoving ? '1' : undefined}
       data-interactive
       style={style}
+      onMouseDown={beginDrag}
+      onClickCapture={onClickCapture}
       onMouseEnter={enterInteractive}
       onMouseLeave={leaveInteractive}
     >
-      <div
-        className="dc-actions"
-        onMouseDown={(e) => {
-          /* Empty padding between buttons is a drag handle; a press on an
-             actual button must stay a click. */
-          if ((e.target as HTMLElement).closest('button')) return;
-          beginDrag(e);
-        }}
-      >
+      <div className="dc-actions">
         <button onClick={() => void api.openSettings()}>设置</button>
         {scan?.organized ? (
           <>
@@ -116,18 +130,10 @@ export function DesktopControl() {
         className="dc-toggle"
         title={
           collapsed
-            ? '按住拖动工具栏 · 单击展开 · 右键打开设置'
-            : '按住药丸或按钮行空白处拖动 · 单击收起 · 右键打开设置'
+            ? '按住工具栏任意位置拖动 · 单击展开 · 右键打开设置'
+            : '按住工具栏任意位置（含按钮）拖动 · 单击药丸收起 · 右键打开设置'
         }
-        onMouseDown={beginDrag}
-        onClick={() => {
-          /* A drag ends with a click event; swallow that one. */
-          if (draggedRef.current) {
-            draggedRef.current = false;
-            return;
-          }
-          void updateSettings({ toolbarCollapsed: !collapsed });
-        }}
+        onClick={() => void updateSettings({ toolbarCollapsed: !collapsed })}
         onContextMenu={(e) => {
           e.preventDefault();
           void api.openSettings();

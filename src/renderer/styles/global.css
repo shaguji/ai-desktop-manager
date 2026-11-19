@@ -1334,10 +1334,18 @@ button.primary {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  /* The whole toolbar is a drag handle, including buttons. */
+  cursor: grab;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease,
     transform 0.08s ease;
 }
 .dc-actions button:active {
+  cursor: grabbing;
+}
+/* A click that stays put keeps the press feedback; a real drag sets
+   data-dragging on the root and skips the shrink so it feels like moving a
+   solid bar rather than pressing a button. */
+.desktop-control:not([data-dragging]) .dc-actions button:active {
   transform: scale(0.94);
 }
 
