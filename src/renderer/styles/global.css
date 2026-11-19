@@ -974,6 +974,15 @@ html[data-theme='light'] .nr-row input {
     transform 0.22s ease;
 }
 /* Collapsed: the button row slides up out of the way, leaving a small pill. */
+/* Near the left edge: grow the button row to the right instead of off-screen. */
+.desktop-control.anchor-left {
+  align-items: flex-start;
+}
+.desktop-control.anchor-left .dc-actions {
+  right: auto;
+  left: 0;
+  transform-origin: top left;
+}
 .desktop-control.collapsed .dc-actions {
   max-height: 0;
   opacity: 0;
@@ -981,6 +990,13 @@ html[data-theme='light'] .nr-row input {
   padding-bottom: 0;
   pointer-events: none;
   transform: translateY(-6px) scaleY(0.9);
+}
+/* The row's empty padding doubles as a drag handle. */
+.dc-actions {
+  cursor: grab;
+}
+.dc-actions:active {
+  cursor: grabbing;
 }
 .dc-toggle {
   border: 1px solid var(--panel-border);

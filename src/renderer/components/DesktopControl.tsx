@@ -16,15 +16,19 @@ export function DesktopControl() {
 
   /**
    * Drag position of the whole toolbar. `null` = the built-in top-right corner.
-   * The pill doubles as the drag handle: press it and move (>4px) to drag,
-   * a plain click still expands / collapses the button row.
+   * The pill and the empty part of the button row both act as drag handles:
+   * press and move (>4px) to drag, a plain click on the pill still toggles.
    */
   const [pos, setPos] = useState<{ x: number; y: number } | null>(settings.toolbarPos ?? null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   /** Set when the last mousedown turned into a drag, so the click that follows is ignored. */
   const draggedRef = useRef(false);
 
-  const onPillMouseDown = (e: React.MouseEvent) => {
+  /** Near the left half of the screen the button row grows right; near the
+   *  right half it grows left, so it never spills off-screen. */
+  const anchorLeft = !!pos && pos.x + 120 < window.innerWidth / 2;
+
+  const beginDrag = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     const el = rootRef.current;
     if (!el) return;
@@ -33,7 +37,7 @@ export function DesktopControl() {
     const start = { mx: e.clientX, my: e.clientY, ox: rect.left, oy: rect.top };
     let moved = false;
     let latest = { x: rect.left, y: rect.top };
-    /* Capture the mouse right away: the pointer will leave the pill on the
+    /* Capture the mouse right away: the pointer will leave the handle on the
        first few pixels and the desktop layer would otherwise hand it back. */
     setDragging(true);
 
@@ -69,13 +73,21 @@ export function DesktopControl() {
   return (
     <div
       ref={rootRef}
-      className={`desktop-control${collapsed ? ' collapsed' : ''}`}
+      className={`desktop-control${collapsed ? ' collapsed' : ''}${anchorLeft ? ' anchor-left' : ''}`}
       data-interactive
       style={style}
       onMouseEnter={enterInteractive}
       onMouseLeave={leaveInteractive}
     >
-      <div className="dc-actions">
+      <div
+        className="dc-actions"
+        onMouseDown={(e) => {
+          /* Empty padding between buttons is a drag handle; a press on an
+             actual button must stay a click. */
+          if ((e.target as HTMLElement).closest('button')) return;
+          beginDrag(e);
+        }}
+      >
         <button onClick={() => void api.openSettings()}>设置</button>
         {scan?.organized ? (
           <>
@@ -104,10 +116,10 @@ export function DesktopControl() {
         className="dc-toggle"
         title={
           collapsed
-            ? '按住可拖动位置 · 单击展开工具栏 · 右键打开设置'
-            : '按住可拖动位置 · 单击收起工具栏 · 右键打开设置'
+            ? '按住拖动工具栏 · 单击展开 · 右键打开设置'
+            : '按住药丸或按钮行空白处拖动 · 单击收起 · 右键打开设置'
         }
-        onMouseDown={onPillMouseDown}
+        onMouseDown={beginDrag}
         onClick={() => {
           /* A drag ends with a click event; swallow that one. */
           if (draggedRef.current) {

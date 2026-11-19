@@ -64,10 +64,16 @@ function hitTest(x: number, y: number): boolean {
 export function refreshPassthrough(): void {
   const st = useStore.getState();
 
-  // Full-capture situations: dragging, an element demanded capture, the user
-  // enabled the "always interactive" escape hatch, or we took over the desktop
-  // (system icons hidden -> there is nothing underneath worth clicking).
-  if (dragging || Date.now() < forcedUntil || st.settings.alwaysInteractive || st.iconsHidden) {
+  // Full-capture situations: dragging, an element demanded capture, or the
+  // user enabled the "always interactive" escape hatch.
+  //
+  // NOTE: iconsHidden must NOT force full capture. Hiding the desktop icons
+  // only removes the icons — the real desktop is still underneath, and the
+  // context menu (new folder / refresh / personalize / paste) must stay
+  // reachable. Capturing the whole layer in that mode swallowed every desktop
+  // right-click. Hit-testing below already keeps our own fences/widgets/toolbar
+  // interactive, so there is no need to capture the empty areas.
+  if (dragging || Date.now() < forcedUntil || st.settings.alwaysInteractive) {
     applyIgnore(false);
     return;
   }
