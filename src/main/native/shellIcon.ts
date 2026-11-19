@@ -212,6 +212,30 @@ export function shellIconPng(filePath: string): Buffer | null {
   return renderHicon(f, sfi.hIcon);
 }
 
+/**
+ * Extract one specific icon resource from an exe/dll by index.
+ *
+ * A shortcut's IconLocation is usually "C:\path\app.dll,3". SHGetFileInfoW
+ * only ever returns the DLL's first icon, so several shortcuts that share a
+ * DLL but use different indices all collapsed onto one glyph. Passing the
+ * index straight to ExtractIconExW keeps them distinct. A negative index is
+ * a resource id (ExtractIconExW treats it as abs(value)).
+ */
+export function indexedIconPng(filePath: string, index: number): Buffer | null {
+  const f = load();
+  if (!f) return null;
+  const large = Buffer.alloc(8);
+  try {
+    const n = f.ExtractIconExW(filePath, index, large, null, 1);
+    if (n === 0) return null;
+    const hicon = koffi.decode(large, 'void*');
+    return renderHicon(f, hicon);
+  } catch (e) {
+    console.warn('[shellIcon] indexed extract failed', filePath, index, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 /** Read one string value out of the registry (REG_SZ / REG_EXPAND_SZ). */
 function regGetString(f: ShellIconFns, hkeyRoot: bigint, subKey: string): string | null {
   const hkBuf = Buffer.alloc(8);

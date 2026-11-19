@@ -22,10 +22,11 @@ app.whenReady().then(async () => {
     console.log('=== readShortcutLink FAILED:', e.message);
   }
 
-  const src = mod.resolveIconSource(LNK);
+  const ref = mod.resolveIconSource(LNK);
+  const src = ref.path;
   console.log('=== resolveIconSource ===');
-  console.log(src);
-  console.log('exists=', fs.existsSync(src), 'ext=', path.extname(src));
+  console.log(ref);
+  console.log('exists=', fs.existsSync(src), 'ext=', path.extname(src), 'index=', ref.index);
 
   const d = await mod.getFileIconDataURL(LNK, 48);
   if (!d) return console.log('=== RESULT: EMPTY ICON ==='), app.quit();

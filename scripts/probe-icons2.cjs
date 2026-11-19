@@ -33,7 +33,8 @@ app.whenReady().then(async () => {
   let empty = 0;
   let resolved = 0;
   for (const f of files) {
-    const src = resolveIconSource(f);
+    const ref = resolveIconSource(f);
+    const src = ref.path;
     const data = await getFileIconDataURL(f, 48);
     const h = md5(data);
     if (!data) empty++;

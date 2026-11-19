@@ -1,7 +1,7 @@
 import { app, shell } from 'electron';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, isAbsolute } from 'node:path';
-import { namespaceIconPng, shellIconPng } from './shellIcon';
+import { indexedIconPng, namespaceIconPng, shellIconPng } from './shellIcon';
 
 /**
  * Icon resolution.
@@ -13,6 +13,12 @@ import { namespaceIconPng, shellIconPng } from './shellIcon';
  */
 
 const cache = new Map<string, string>();
+
+/** A resolved icon source: a file path plus an optional resource index (",N"). */
+interface IconRef {
+  path: string;
+  index: number | null;
+}
 
 /** Expand %SystemRoot%-style variables that appear in shortcut icon fields. */
 function expandEnv(value: string): string {
@@ -33,10 +39,21 @@ function usableFile(p: string): boolean {
   }
 }
 
-/** Split "C:\a\b.dll,3" into its path (the index cannot be used by getFileIcon). */
-function stripIconIndex(p: string): string {
-  const m = p.match(/^"?([^",]+)"?(?:,-?\d+)?$/);
-  return (m ? m[1] : p).trim();
+/**
+ * Split an IconLocation into path + resource index.
+ * "C:\a\b.dll,3"    -> { path: "C:\a\b.dll", index: 3 }
+ * "%SystemRoot%\a.dll,-109" -> { path: <expanded>, index: -109 }
+ * The index is significant: a single DLL can hold many icons and shortcuts
+ * to the same app family differ only by this number.
+ */
+function parseIconRef(raw: string): IconRef | null {
+  const s = String(raw || '').trim();
+  if (!s) return null;
+  const m = s.match(/^"?([^",]+)"?(?:\s*,\s*(-?\d+))?\s*$/);
+  const path = expandEnv(m ? m[1] : s).replace(/^"(.*)"$/, '$1').trim();
+  if (!path) return null;
+  const index = m && m[2] !== undefined ? parseInt(m[2], 10) : null;
+  return { path, index };
 }
 
 /**
@@ -109,39 +126,47 @@ function guessFromLnkBinary(lnk: string): string | null {
 }
 
 /**
- * Resolve a `.lnk` to the file whose icon Windows would display for it.
- * Preference: a real .ico -> the target program -> any custom icon source.
+ * Resolve a `.lnk` to the icon Windows actually displays for it.
+ *
+ * Windows draws a shortcut with the icon named in its IconLocation field
+ * ("C:\x\app.dll,3"), NOT the target program's default icon. The old code
+ * preferred `target`, so every shortcut showed its exe's generic icon even
+ * when Explorer showed a bespoke one. Worse, the resource index was dropped,
+ * so shortcuts sharing one DLL with different indices all collided.
+ *
+ * Preference now: IconLocation (with index) -> target program -> binary guess.
  */
-function iconSourceForLnk(lnk: string): string | null {
+function iconSourceForLnk(lnk: string): IconRef | null {
   try {
     const sc = shell.readShortcutLink(lnk);
-    const customRaw = expandEnv(String(sc.icon || ''));
-    const custom = stripIconIndex(customRaw);
+    const custom = parseIconRef(String(sc.icon || ''));
     const target = expandEnv(String(sc.target || '')).replace(/^"(.*)"$/, '$1');
 
-    if (custom && extname(custom).toLowerCase() === '.ico' && usableFile(custom)) return custom;
-    if (target && usableFile(target) && extname(target).toLowerCase() !== '.lnk') return target;
-    if (custom && usableFile(custom)) return custom;
+    /* The shortcut's own icon location is authoritative — keep its index. */
+    if (custom && usableFile(custom.path)) return custom;
+    if (target && usableFile(target) && extname(target).toLowerCase() !== '.lnk') {
+      return { path: target, index: null };
+    }
   } catch (e) {
     // Store / MSIX-style links, broken links, network paths, ...
     console.warn('[fileIcon] readShortcutLink failed for', lnk, e instanceof Error ? e.message : e);
     const guessed = guessFromLnkBinary(lnk);
     if (guessed) {
       console.log('[fileIcon] recovered target from binary:', lnk, '->', guessed);
-      return guessed;
+      return { path: guessed, index: null };
     }
   }
   return null;
 }
 
 /** A `.url` internet shortcut stores its icon in an INI field, not in the target. */
-function iconSourceForUrl(urlFile: string): string | null {
+function iconSourceForUrl(urlFile: string): IconRef | null {
   try {
     const text = readFileSync(urlFile, 'utf-8');
     const m = text.match(/^\s*IconFile\s*=\s*(.+)$/im);
     if (!m) return null;
-    const p = stripIconIndex(expandEnv(m[1]));
-    return usableFile(p) ? p : null;
+    const ref = parseIconRef(m[1]);
+    return ref && usableFile(ref.path) ? ref : null;
   } catch {
     return null;
   }
@@ -149,13 +174,13 @@ function iconSourceForUrl(urlFile: string): string | null {
 
 /**
  * Best-effort icon source for a path. Returns the path itself for normal files
- * and the resolved program for shortcuts.
+ * and the resolved icon location (path + index) for shortcuts.
  */
-export function resolveIconSource(filePath: string): string {
+export function resolveIconSource(filePath: string): IconRef {
   const ext = extname(filePath).toLowerCase();
-  if (ext === '.lnk') return iconSourceForLnk(filePath) ?? filePath;
-  if (ext === '.url') return iconSourceForUrl(filePath) ?? filePath;
-  return filePath;
+  if (ext === '.lnk') return iconSourceForLnk(filePath) ?? { path: filePath, index: null };
+  if (ext === '.url') return iconSourceForUrl(filePath) ?? { path: filePath, index: null };
+  return { path: filePath, index: null };
 }
 
 /** Simple concurrency guard: shell icon lookups are native and not free. */
@@ -237,16 +262,34 @@ function pngFrameFromIco(p: string): string | null {
 
 /**
  * Get a file/folder icon as a data URL.
- * For shortcuts the icon of the linked program is used, falling back to the
- * shell's own answer when the link cannot be resolved.
+ * For shortcuts the icon named by their IconLocation is used (including the
+ * resource index), matching what Windows Explorer shows. Falls back to the
+ * target program / shell answer when the link cannot be resolved.
  */
 export async function getFileIconDataURL(filePath: string, size = 32): Promise<string> {
   const key = `${filePath}|${size}`;
   const hit = cache.get(key);
   if (hit !== undefined) return hit;
 
-  const source = resolveIconSource(filePath);
+  const ref = resolveIconSource(filePath);
+  const source = ref.path;
   let out = '';
+
+  // An explicit resource index (",3" / ",-109") points at one icon inside an
+  // exe/dll. SHGetFileInfoW cannot target it, so extract by index directly —
+  // this is what keeps sibling shortcuts from sharing one glyph.
+  if (ref.index !== null) {
+    try {
+      const png = await withSlot(() => Promise.resolve(indexedIconPng(source, ref.index!)));
+      if (png) {
+        out = 'data:image/png;base64,' + png.toString('base64');
+        cache.set(key, out);
+        return out;
+      }
+    } catch (e) {
+      console.warn('[fileIcon] indexed icon failed', source, ref.index, e instanceof Error ? e.message : e);
+    }
+  }
 
   // Image-backed icons are inlined as-is (.png/.jpg sources).
   if (extname(source).toLowerCase() !== '.ico') {
